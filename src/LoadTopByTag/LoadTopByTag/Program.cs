@@ -38,40 +38,71 @@ namespace LoadTopByTag
             foreach (var url in urls)
             {
                 i++;
-                Log($"Downloading file:{i} / {url}");
-                var command = $"torify youtube-dl --download-archive ../downloaded.txt --no-post-overwrites --extract-audio --audio-format mp3 {url}";
+                Log($"Date: {DateTime.UtcNow}");
+                Log($"Downloading file: {i} / {url}");
+                var command = $"torify youtube-dl --download-archive info/downloaded.txt --no-post-overwrites --extract-audio --audio-format mp3 {url}";
                 ExecuteCommand($"-c '{command}'");
             }
         }
-        static async Task Main(string[] args)
-        {
-            File.WriteAllText("../log.txt", string.Empty);
 
-            var tag = "classic+rock";
-            var path = @$"E:\private\music\last.fm\tag\{tag}";
+
+        static async Task Do(string tag) {
+            var path = @$"E:\private\music\last.fm\tags\{tag}";
             bool crawleList = false;
 
+            var tagPath = Path.Combine(path);
+            if (!Directory.Exists(tagPath))
+            {
+                Directory.CreateDirectory(tagPath);
+            }
+            Directory.SetCurrentDirectory(tagPath);
+            var infoPath = Path.Combine(tagPath,"info");
+            if (!Directory.Exists(infoPath))
+            {
+                Directory.CreateDirectory(infoPath);
+            }
+
+            var downloaded = new List<string>();
+            var downloadedPath = "info/downloaded.txt";
+            if (File.Exists(downloadedPath))
+            {
+                downloaded = File.ReadAllLines(downloadedPath).Select(x => x.Replace("youtube ", "").Trim())
+                    .ToList();
+            }
 
             List<string> urls;
-            var urlsPath = Path.Combine(path, "urls.txt");
+            var urlsPath = "info/urls.txt";
             if (crawleList)
             {
                 urls = await CrawleUrls(tag);
                 File.WriteAllLines(urlsPath, urls);
             }
-            else {
+            else
+            {
                 urls = File.ReadLines(urlsPath).ToList();
             }
 
-            var rdir = Path.Combine(path,"mp3");
-            if (!Directory.Exists(rdir))
-            {
-                Directory.CreateDirectory(rdir);
-            }
+            urls = urls.Where(x => {
 
-            Directory.SetCurrentDirectory(rdir);
+                var arr = x.Split('=');
+                return !downloaded.Contains(arr[^1]);
+            }).ToList();
+
             LoadMp3(urls);
 
+
+        }
+        static async Task Main(string[] args)
+        {
+            var tags = File.ReadAllLines(@"E:\private\music\last.fm\tags.txt")
+                .Select(x => x.Trim()).Where(x=>!string.IsNullOrEmpty(x));
+            foreach (var tag in tags)
+            {
+                await Do(tag);
+            }
+
+
+            
             Console.WriteLine("Hello World!");
         }
 
@@ -90,12 +121,12 @@ namespace LoadTopByTag
             process.OutputDataReceived += (s, e) => Log(e.Data);
             process.ErrorDataReceived += (s, e) => Log(e.Data);
             process.BeginOutputReadLine();
-            process.WaitForExit();
+            process.WaitForExit(120000);
         }
 
         private static void Log(string str) {
             Console.WriteLine(str);
-            File.AppendAllText("../log.txt",str+Environment.NewLine);
+            File.AppendAllText("info/log.txt",str+Environment.NewLine);
         }
     }
 }
