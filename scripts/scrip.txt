@@ -1,0 +1,1 @@
+cat 1 | grep data-youtube-url | sed -e 's/^[^\"]*\"//' -e "s/\"//"

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+tag=$1
+echo $tag
+
+mkdir -p $tag
+
+for i in {1..20}
+do
+   echo "Welcome $i times $tag"
+done
