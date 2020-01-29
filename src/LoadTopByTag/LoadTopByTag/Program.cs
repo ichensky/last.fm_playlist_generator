@@ -12,8 +12,6 @@ namespace LoadTopByTag
 {
     class Program
     {
-        private static string _errorLogPath;
-
         static async Task<List<string>> CrawleUrls(string tag) {
             var client = new HttpClient();
             client.DefaultRequestHeaders.Add("User-Agent",
@@ -23,7 +21,7 @@ namespace LoadTopByTag
 
             for (int i = 1; i < 21; i++)
             {
-                Console.WriteLine($"processing last.fm page: {i}");
+                Log($"processing last.fm page: {i}");
                 var text = await client.GetStringAsync($"https://www.last.fm/tag/{tag}/tracks?page={i}");
                 var lines= Regex.Split(text, "\r\n|\r|\n");
 
@@ -40,21 +38,19 @@ namespace LoadTopByTag
             foreach (var url in urls)
             {
                 i++;
-                Console.WriteLine($"Downloading file:{i}");
+                Log($"Downloading file:{i} / {url}");
                 var command = $"torify youtube-dl --download-archive ../downloaded.txt --no-post-overwrites --extract-audio --audio-format mp3 {url}";
-                ExecuteCommand($"bash.exe -c \"{command}\"");
-                Thread.Sleep(5);
+                ExecuteCommand($"-c '{command}'");
             }
         }
         static async Task Main(string[] args)
         {
+            File.WriteAllText("../log.txt", string.Empty);
+
             var tag = "classic+rock";
-            var path = @$"C:\Users\IChensky\Desktop\last.fm\tag\{tag}";
+            var path = @$"E:\private\music\last.fm\tag\{tag}";
             bool crawleList = false;
 
-
-            _errorLogPath = Path.Combine(path, "log.error.txt");
-            File.WriteAllText(_errorLogPath,"");
 
             List<string> urls;
             var urlsPath = Path.Combine(path, "urls.txt");
@@ -82,35 +78,24 @@ namespace LoadTopByTag
 
         static void ExecuteCommand(string command)
         {
-            int exitCode;
-            ProcessStartInfo processInfo;
-            Process process;
-
-            processInfo = new ProcessStartInfo("cmd.exe", "/c " + command);
-            processInfo.CreateNoWindow = true;
-            processInfo.UseShellExecute = false;
-            // *** Redirect the output ***
-            processInfo.RedirectStandardError = true;
-            processInfo.RedirectStandardOutput = true;
-
-            process = Process.Start(processInfo);
-            process.WaitForExit();
-
-            // *** Read the streams ***
-            string output = process.StandardOutput.ReadToEnd();
-            string error = process.StandardError.ReadToEnd();
-
-            exitCode = process.ExitCode;
-
-            Console.WriteLine("output>>" + (String.IsNullOrEmpty(output) ? "(none)" : output));
-            Console.WriteLine("error>>" + (String.IsNullOrEmpty(error) ? "(none)" : error));
-            Console.WriteLine("ExitCode: " + exitCode.ToString(), "ExecuteCommand");
-            if (!string.IsNullOrEmpty(error))
+            var processInfo = new ProcessStartInfo("bash.exe", command)
             {
-                File.AppendAllText(_errorLogPath,error + Environment.NewLine);
-            }
-            process.Close();
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput=true,
+                RedirectStandardError=true
+            };
+
+            using var process = Process.Start(processInfo);
+            process.OutputDataReceived += (s, e) => Log(e.Data);
+            process.ErrorDataReceived += (s, e) => Log(e.Data);
+            process.BeginOutputReadLine();
+            process.WaitForExit();
         }
 
+        private static void Log(string str) {
+            Console.WriteLine(str);
+            File.AppendAllText("../log.txt",str+Environment.NewLine);
+        }
     }
 }
