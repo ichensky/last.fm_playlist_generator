@@ -13,6 +13,7 @@ namespace LoadTopByTag
     class Program
     {
         static async Task<List<string>> CrawleUrls(string tag) {
+                Log($"tag: {tag}");
             var client = new HttpClient();
             client.DefaultRequestHeaders.Add("User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36");
@@ -39,7 +40,7 @@ namespace LoadTopByTag
             {
                 i++;
                 Log($"Date: {DateTime.UtcNow}");
-                Log($"Downloading file: {i} / {url}");
+                Log($"Downloading file: {i} / {urls.Count} / {url}");
                 var command = $"torify youtube-dl --download-archive info/downloaded.txt --no-post-overwrites --extract-audio --audio-format mp3 {url}";
                 ExecuteCommand($"-c '{command}'");
             }
@@ -48,7 +49,6 @@ namespace LoadTopByTag
 
         static async Task Do(string tag) {
             var path = @$"E:\private\music\last.fm\tags\{tag}";
-            bool crawleList = false;
 
             var tagPath = Path.Combine(path);
             if (!Directory.Exists(tagPath))
@@ -72,7 +72,7 @@ namespace LoadTopByTag
 
             List<string> urls;
             var urlsPath = "info/urls.txt";
-            if (crawleList)
+            if (!File.Exists(urlsPath))
             {
                 urls = await CrawleUrls(tag);
                 File.WriteAllLines(urlsPath, urls);
@@ -126,7 +126,7 @@ namespace LoadTopByTag
 
         private static void Log(string str) {
             Console.WriteLine(str);
-            File.AppendAllText("info/log.txt",str+Environment.NewLine);
+            //File.AppendAllText("info/log.txt",str+Environment.NewLine);
         }
     }
 }
